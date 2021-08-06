@@ -6,6 +6,7 @@
 #include <Windows.h>
 #include<fstream>
 #include <cwchar>
+#include<atlstr.h>
 
 #include<fcntl.h>
 #include<io.h>
@@ -13,7 +14,7 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 
-#define _WIN32_WINNT 0x0500
+//#define _WIN32_WINNT 0x0500
 using namespace std;
 
 void cls()
@@ -80,6 +81,7 @@ void setConsoleSize(int width, int height) {
 	RECT r;
 	GetWindowRect(console, &r); //stores the console's current dimensions
 
+	
 	removeScrollBar();
 	MoveWindow(console, r.left, r.top, width, height + 31, TRUE); // 800 width, 100 height
 	
@@ -132,7 +134,7 @@ public:
 			screen[i] = new short[width];
 	}
 
-	void loadFromMatrix(short *matrix[]) {
+	void loadFromMatrix(short*matrix[]) {
 		screen = matrix;
 	}
 
@@ -146,15 +148,15 @@ public:
 	}
 
 	// get & set //
-	int getWidth() {
+	inline int getWidth() {
 		return width;
 	}
 
-	int getHeight() {
+	inline int getHeight() {
 		return height;
 	}
 
-	void setSize(int width, int height) {
+	inline void setSize(int width, int height) {
 		short** temp = new short* [height];
 		for (int i = 0; i < height; ++i)
 			temp[i] = new short[height];
@@ -186,7 +188,7 @@ public:
 		return screen[y][x];
 	}
 
-	void setPixel(int x, int y, short color) {
+	inline void setPixel(int x, int y, short color) {
 		if (x >= 0 && x < width && y >= 0 && y < height) {
 			screen[y][x] = color;
 		}
@@ -199,6 +201,8 @@ class Console_Engine{
 	int width, height, charSizeX, charSizeY;
 	bool updated = 0;
 
+	HWND console = GetConsoleWindow();
+
 	void resize(int w, int h) {
 		setConsoleSize(w * charSizeX, h * charSizeY);
 	}
@@ -206,8 +210,7 @@ class Console_Engine{
 public:
 	Console_Engine(int width, int height, short charSizeX = 1, short charSizeY = 1) {
 		//set unresizable
-		HWND consoleWindow = GetConsoleWindow();
-		SetWindowLong(consoleWindow, GWL_STYLE, GetWindowLong(consoleWindow, GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
+		SetWindowLong(console, GWL_STYLE, GetWindowLong(console, GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 
 		::_setmode(::_fileno(stdout), _O_U16TEXT);
 		setCharSize(charSizeX, charSizeY);
@@ -224,15 +227,19 @@ public:
 	}
 
 	// get & set //
-	int getWidth() {
+	inline void setCaption(string caption){
+		SetConsoleTitleA(caption.c_str());
+	}
+
+	inline int getWidth() {
 		return width;
 	}
 
-	int getHeight() {
+	inline int getHeight() {
 		return height;
 	}
 
-	void setSize(int width, int height) {
+	inline void setSize(int width, int height) {
 		updated = 0;
 		short** temp = new short* [height];
 		for (int i = 0; i < height; ++i)
@@ -266,7 +273,7 @@ public:
 		return screen[y][x];
 	}
 
-	void setPixel(int x, int y, short color) {
+	inline void setPixel(int x, int y, short color) {
 		updated = 0;
 		if (x >= 0 && x < width && y >= 0 && y < height) {
 			//wcout << "y:" << y << " x: " << x << endl;
@@ -287,18 +294,36 @@ public:
 		if (updated) return;
 		updated = 1;
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		CHAR_INFO CI; CI.Char.UnicodeChar = L'█';
-		COORD charBufSize = { 1, 1 };
+		//CHAR_INFO CI; CI.Char.UnicodeChar = L'█';
+
+		CHAR_INFO* charInfo = new CHAR_INFO[width * height];
+		COORD charBufSize = { width, height };
 		COORD characterPos = { 0, 0 };
+		SMALL_RECT writeArea = { 0,0,width,height };
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
-				CI.Attributes = screen[i][j];
-				SMALL_RECT writeArea = {j, i, j, i};
-				WriteConsoleOutputW(hConsole, &CI, charBufSize, characterPos, &writeArea);
+				charInfo[i * width + j].Char.UnicodeChar = L'█';
+				charInfo[i * width + j].Attributes = screen[i][j];
+				
 			}
 		}
+		WriteConsoleOutputW(hConsole, charInfo, charBufSize, characterPos, &writeArea);
 
 	}
+
+	/*void bruhdisplay() {
+		if (updated) return;
+		updated = 1;
+
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				SetPixel(mydc,j, i, screen[i][j]);
+			}
+		}
+		//ReleaseDC(console, mydc);
+		//cin.ignore();
+
+	}*/
 
 
 	void badisplay() {
