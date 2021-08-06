@@ -52,7 +52,7 @@ void cls()
 	SetConsoleCursorPosition(hOut, topLeft);
 }
 
-void removeScrollBar() {
+bool removeScrollBar() {
 	// get handle to the console window
 	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -74,6 +74,7 @@ void removeScrollBar() {
 	newSize.Y = winHeight;
 
 	int Status = SetConsoleScreenBufferSize(hOut, newSize);
+	return Status != -1;
 }
 
 void setConsoleSize(int width, int height) {
@@ -82,7 +83,7 @@ void setConsoleSize(int width, int height) {
 	GetWindowRect(console, &r); //stores the console's current dimensions
 
 	
-	removeScrollBar();
+	while (!removeScrollBar()) {}
 	MoveWindow(console, r.left, r.top, width, height + 31, TRUE); // 800 width, 100 height
 	
 }
@@ -184,7 +185,6 @@ public:
 
 	short colorAt(int x, int y) {
 		assert(x >= 0 && x < width&& y >= 0 && y < height);
-		//wcout << "y2:" << y << " x2: " << x << endl;
 		return screen[y][x];
 	}
 
@@ -276,7 +276,6 @@ public:
 	inline void setPixel(int x, int y, short color) {
 		updated = 0;
 		if (x >= 0 && x < width && y >= 0 && y < height) {
-			//wcout << "y:" << y << " x: " << x << endl;
 			screen[y][x] = color;
 		}
 	}
@@ -294,7 +293,6 @@ public:
 		if (updated) return;
 		updated = 1;
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		//CHAR_INFO CI; CI.Char.UnicodeChar = L'█';
 
 		CHAR_INFO* charInfo = new CHAR_INFO[width * height];
 		COORD charBufSize = { width, height };
@@ -308,60 +306,6 @@ public:
 			}
 		}
 		WriteConsoleOutputW(hConsole, charInfo, charBufSize, characterPos, &writeArea);
-
-	}
-
-	/*void bruhdisplay() {
-		if (updated) return;
-		updated = 1;
-
-		for (int i = 0; i < height; i++) {
-			for (int j = 0; j < width; j++) {
-				SetPixel(mydc,j, i, screen[i][j]);
-			}
-		}
-		//ReleaseDC(console, mydc);
-		//cin.ignore();
-
-	}*/
-
-
-	void badisplay() {
-		if (updated) return;
-		updated = 1;
-		cls();
-		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-		
-		wchar_t* temp = new wchar_t[width*height + height];
-		int len = 0;
-		short color = screen[0][0];
-		
-		for (int i = 0; i < height + 1; i++) {
-			for (int j = 0; j < width; j++) {
-				if (i * width + j + 1 > height * width) {
-					SetConsoleTextAttribute(hConsole, color);
-					wcout.write(temp, len);
-					delete[] temp; temp = new wchar_t[width * height]; len = 1;
-					temp[0] = L'█';
-					goto END;
-				}
-				if (screen[i][j] == color) {
-					temp[len++] = L'█';
-				}
-				else {
-					SetConsoleTextAttribute(hConsole, color);
-					wcout.write(temp, len);
-					delete[] temp; temp = new wchar_t[width * height]; len = 1;
-					temp[0] = L'█';
-				}
-				
-				
-				color = screen[i][j];
-
-			}
-			temp[len++] = L'\n';
-		}
-		END:wcout.flush();
+		delete[] charInfo;
 	}
 };
