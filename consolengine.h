@@ -21,7 +21,7 @@
 using namespace std;
 
 enum Colors {
-	BLACK, DARK_BLUE, DARK_GREEN, WATER, BORDEAUX, PURPLE, GREEN, LIGHT_GRAY, GRAY, BLUE, LIME, LIGHTBLUE, RED, MAGENTA, YELLOW, WHITE,_TRANSPARENT
+	BLACK, DARK_BLUE, DARK_GREEN, WATER, BORDEAUX, PURPLE, GREEN, LIGHT_GRAY, GRAY, BLUE, LIME, LIGHTBLUE, RED, MAGENTA, YELLOW, WHITE, _TRANSPARENT
 };
 
 float getDist(int x, int y, int x2, int y2) {
@@ -62,7 +62,7 @@ void setConsoleSize(int width, int height) {
 
 	while (!removeScrollBar()) {
 	}
-	MoveWindow(console, r.left, r.top, width, height + 31, TRUE); // 800 width, 100 height
+	MoveWindow(console, r.left, r.top, width + 16, height + 39, TRUE); // 800 width, 100 height
 
 }
 
@@ -324,11 +324,11 @@ public:
 		}
 		for (int i = 0; i < height; i++) {
 			setPixel(x, y + i, color);
-			setPixel(x+width, y + i, color);
+			setPixel(x + width, y + i, color);
 		}
-		for (int i = 0; i < width+1; i++) {
-			setPixel(x+i,y, color);
-			setPixel(x+i, y + height, color);
+		for (int i = 0; i < width + 1; i++) {
+			setPixel(x + i, y, color);
+			setPixel(x + i, y + height, color);
 		}
 	}
 
@@ -345,7 +345,7 @@ public:
 		}
 		for (int i = 0; i < radius * 2; i++) {
 			for (int j = 0; j < radius * 2; j++) {
-				if (getDist(x, y, x - radius + j, y - radius + i) < radius && getDist(x, y, x - radius + j, y - radius + i) >= radius -1) {
+				if (getDist(x, y, x - radius + j, y - radius + i) < radius && getDist(x, y, x - radius + j, y - radius + i) >= radius - 1) {
 					setPixel(x - radius + j, y - radius + i, color);
 				}
 			}
@@ -354,7 +354,7 @@ public:
 
 	void drawLine(int x, int y, int endx, int endy, short color) {
 		float angle = atan2(endy - y, endx - x);
-		for (int i = 0; i < getDist(x, y, endx, endy);i++) {
+		for (int i = 0; i < getDist(x, y, endx, endy); i++) {
 			setPixel(x + cos(angle) * i, y + sin(angle) * i, color);
 		}
 	}
