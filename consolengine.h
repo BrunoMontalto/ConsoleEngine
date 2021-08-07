@@ -8,6 +8,7 @@
 #include <cwchar>
 #include<atlstr.h>
 #include<vector>
+#include<cmath>
 
 #include<fcntl.h>
 #include<io.h>
@@ -15,43 +16,19 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 
+
 //#define _WIN32_WINNT 0x0500
 using namespace std;
 
-void cls()
-{
-	// Get the Win32 handle representing standard output.
-	// This generally only has to be done once, so we make it static.
-	static const HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+enum Colors {
+	BLACK, DARK_BLUE, DARK_GREEN, WATER, BORDEAUX, PURPLE, GREEN, LIGHT_GRAY, GRAY, BLUE, LIME, LIGHTBLUE, RED, MAGENTA, YELLOW, WHITE,_TRANSPARENT
+};
 
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	COORD topLeft = { 0, 0 };
-
-	// std::cout uses a buffer to batch writes to the underlying console.
-	// We need to flush that to the console because we're circumventing
-	// std::cout entirely; after we clear the console, we don't want
-	// stale buffered text to randomly be written out.
-	std::cout.flush();
-
-	// Figure out the current width and height of the console window
-	if (!GetConsoleScreenBufferInfo(hOut, &csbi)) {
-		// TODO: Handle failure!
-		abort();
-	}
-	DWORD length = csbi.dwSize.X * csbi.dwSize.Y;
-
-	DWORD written;
-
-	// Flood-fill the console with spaces to clear it
-	FillConsoleOutputCharacter(hOut, TEXT(' '), length, topLeft, &written);
-
-	// Reset the attributes of every character to the default.
-	// This clears all background colour formatting, if any.
-	FillConsoleOutputAttribute(hOut, csbi.wAttributes, length, topLeft, &written);
-
-	// Move the cursor back to the top left for the next sequence of writes
-	SetConsoleCursorPosition(hOut, topLeft);
+float getDist(int x, int y, int x2, int y2) {
+	return sqrt(pow(x - x2, 2) + pow(y - y2, 2));
 }
+
+
 
 bool removeScrollBar() {
 	// get handle to the console window
@@ -103,22 +80,6 @@ void setCharSize(int x, int y) {
 
 
 
-/*struct Color {
-	int r = 0, g = 0, b = 0;
-	Color() {}
-	Color(int r, int g, int b) {
-		this->r = r;
-		this->g = g;
-		this->b = b;
-	}
-
-	void clear() {
-		r = 0; g = 0; b = 0;
-	}
-};*/
-
-//⬛
-
 class Surface {
 	short** screen;
 	int width, height;
@@ -134,6 +95,7 @@ public:
 		screen = new short* [height];
 		for (int i = 0; i < height; ++i)
 			screen[i] = new short[width];
+		fill(16);
 	}
 
 	void loadFromMatrix(short** matrix) {
@@ -178,15 +140,6 @@ public:
 		this->width = width;
 		this->height = height;
 	}
-	// -------------- //
-
-	void fill(short color) {
-		for (int i = 0; i < height; i++) {
-			for (int j = 0; j < width; j++) {
-				screen[i][j] = color;
-			}
-		}
-	}
 
 	short colorAt(int x, int y) {
 		assert(x >= 0 && x < width&& y >= 0 && y < height);
@@ -198,6 +151,77 @@ public:
 			screen[y][x] = color;
 		}
 	}
+	// -------------- //
+
+	// drawing //
+	void fill(short color) {
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				screen[i][j] = color;
+			}
+		}
+	}
+
+	void drawRect(int x, int y, int width, int height, short color, bool fill = 1) {
+		if (fill) {
+			for (int i = 0; i < height; i++) {
+				for (int j = 0; j < width; j++) {
+					setPixel(x + j, y + i, color);
+				}
+			}
+			return;
+		}
+		for (int i = 0; i < height; i++) {
+			setPixel(x, y + i, color);
+			setPixel(x + width, y + i, color);
+		}
+		for (int i = 0; i < width + 1; i++) {
+			setPixel(x + i, y, color);
+			setPixel(x + i, y + height, color);
+		}
+	}
+
+	void drawCircle(int x, int y, int radius, short color, bool fill = 1) {
+		if (fill) {
+			for (int i = 0; i < radius * 2; i++) {
+				for (int j = 0; j < radius * 2; j++) {
+					if (getDist(x, y, x - radius + j, y - radius + i) < radius) {
+						setPixel(x - radius + j, y - radius + i, color);
+					}
+				}
+			}
+			return;
+		}
+		for (int i = 0; i < radius * 2; i++) {
+			for (int j = 0; j < radius * 2; j++) {
+				if (getDist(x, y, x - radius + j, y - radius + i) < radius && getDist(x, y, x - radius + j, y - radius + i) >= radius - 1) {
+					setPixel(x - radius + j, y - radius + i, color);
+				}
+			}
+		}
+	}
+
+	void drawLine(int x, int y, int endx, int endy, short color) {
+		float angle = atan2(endy - y, endx - x);
+		for (int i = 0; i < getDist(x, y, endx, endy); i++) {
+			setPixel(x + cos(angle) * i, y + sin(angle) * i, color);
+		}
+	}
+
+
+	void draw(Surface surf, int x, int y) {
+		for (int i = 0; i < surf.getHeight(); i++) {
+			for (int j = 0; j < surf.getWidth(); j++) {
+				short color = surf.colorAt(j, i);
+				if (color % 17 == 16) continue;
+				setPixel(j + x, i + y, color);
+			}
+		}
+	}
+	// -------------- //
+
+
+
 };
 
 
@@ -264,16 +288,6 @@ public:
 		this->height = height;
 		resize(width, height);
 	}
-	// -------------- //
-
-	void fill(short color) {
-		updated = 0;
-		for (int i = 0; i < height; i++) {
-			for (int j = 0; j < width; j++) {
-				screen[i][j] = color;
-			}
-		}
-	}
 
 	short colorAt(int x, int y) {
 		assert(x >= 0 && x < width&& y >= 0 && y < height);
@@ -286,12 +300,72 @@ public:
 			screen[y][x] = color;
 		}
 	}
+	// -------------- //
+
+
+	// drawing //
+	void fill(short color) {
+		updated = 0;
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				screen[i][j] = color;
+			}
+		}
+	}
+
+	void drawRect(int x, int y, int width, int height, short color, bool fill = 1) {
+		if (fill) {
+			for (int i = 0; i < height; i++) {
+				for (int j = 0; j < width; j++) {
+					setPixel(x + j, y + i, color);
+				}
+			}
+			return;
+		}
+		for (int i = 0; i < height; i++) {
+			setPixel(x, y + i, color);
+			setPixel(x+width, y + i, color);
+		}
+		for (int i = 0; i < width+1; i++) {
+			setPixel(x+i,y, color);
+			setPixel(x+i, y + height, color);
+		}
+	}
+
+	void drawCircle(int x, int y, int radius, short color, bool fill = 1) {
+		if (fill) {
+			for (int i = 0; i < radius * 2; i++) {
+				for (int j = 0; j < radius * 2; j++) {
+					if (getDist(x, y, x - radius + j, y - radius + i) < radius) {
+						setPixel(x - radius + j, y - radius + i, color);
+					}
+				}
+			}
+			return;
+		}
+		for (int i = 0; i < radius * 2; i++) {
+			for (int j = 0; j < radius * 2; j++) {
+				if (getDist(x, y, x - radius + j, y - radius + i) < radius && getDist(x, y, x - radius + j, y - radius + i) >= radius -1) {
+					setPixel(x - radius + j, y - radius + i, color);
+				}
+			}
+		}
+	}
+
+	void drawLine(int x, int y, int endx, int endy, short color) {
+		float angle = atan2(endy - y, endx - x);
+		for (int i = 0; i < getDist(x, y, endx, endy);i++) {
+			setPixel(x + cos(angle) * i, y + sin(angle) * i, color);
+		}
+	}
 
 	void draw(Surface surf, int x, int y) {
 		updated = 0;
 		for (int i = 0; i < surf.getHeight(); i++) {
 			for (int j = 0; j < surf.getWidth(); j++) {
-				setPixel(j + x, i + y, surf.colorAt(j, i));
+				short color = surf.colorAt(j, i);
+				if (color % 17 == 16) continue;
+				setPixel(j + x, i + y, color);
 			}
 		}
 	}
@@ -315,8 +389,10 @@ public:
 		WriteConsoleOutputW(hConsole, charInfo, charBufSize, characterPos, &writeArea);
 		delete[] charInfo;
 	}
+	// -------------- //
 
 
+	// input //
 	void getKeysPressed(vector<char>* dest) {
 		dest->clear();
 		for (int i = 0; i < 37; i++) {
@@ -328,4 +404,5 @@ public:
 	bool isPressed(char k) {
 		return GetKeyState(k) & 0x8000;
 	}
+	// ----- //
 };
