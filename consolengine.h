@@ -7,6 +7,7 @@
 #include<fstream>
 #include <cwchar>
 #include<atlstr.h>
+#include<vector>
 
 #include<fcntl.h>
 #include<io.h>
@@ -82,10 +83,10 @@ void setConsoleSize(int width, int height) {
 	RECT r;
 	GetWindowRect(console, &r); //stores the console's current dimensions
 
-	
-	while (!removeScrollBar()) {}
+	while (!removeScrollBar()) {
+	}
 	MoveWindow(console, r.left, r.top, width, height + 31, TRUE); // 800 width, 100 height
-	
+
 }
 
 void setCharSize(int x, int y) {
@@ -135,8 +136,12 @@ public:
 			screen[i] = new short[width];
 	}
 
-	void loadFromMatrix(short*matrix[]) {
-		screen = matrix;
+	void loadFromMatrix(short** matrix) {
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				screen[i][j] = matrix[i][j];
+			}
+		}
 	}
 
 	void loadFromFile(string filename) {
@@ -175,10 +180,10 @@ public:
 	}
 	// -------------- //
 
-	void clear() {
-		for (int i = 0; i < width; i++) {
-			for (int j = 0; j < height; j++) {
-				screen[i][j] = 0;
+	void fill(short color) {
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				screen[i][j] = color;
 			}
 		}
 	}
@@ -196,10 +201,12 @@ public:
 };
 
 
-class Console_Engine{
+class ConsoleEngine {
 	short** screen;
 	int width, height, charSizeX, charSizeY;
 	bool updated = 0;
+
+	char keys[37] = { 'Q','W','E','R','T','Y','U','I','O','P','A','S','D','F','G','H','J','K','L','Z','X','C','V','B','N','M',' ','1','2','3','4','5','6','7','8','9','0' };
 
 	HWND console = GetConsoleWindow();
 
@@ -208,13 +215,13 @@ class Console_Engine{
 	}
 
 public:
-	Console_Engine(int width, int height, short charSizeX = 1, short charSizeY = 1) {
+	ConsoleEngine(int width, int height, short charSizeX = 1, short charSizeY = 1) {
 		//set unresizable
 		SetWindowLong(console, GWL_STYLE, GetWindowLong(console, GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 
 		::_setmode(::_fileno(stdout), _O_U16TEXT);
 		setCharSize(charSizeX, charSizeY);
-		
+
 		this->charSizeX = charSizeX;
 		this->charSizeY = charSizeY;
 		this->width = width;
@@ -227,7 +234,7 @@ public:
 	}
 
 	// get & set //
-	inline void setCaption(string caption){
+	inline void setCaption(string caption) {
 		SetConsoleTitleA(caption.c_str());
 	}
 
@@ -284,7 +291,7 @@ public:
 		updated = 0;
 		for (int i = 0; i < surf.getHeight(); i++) {
 			for (int j = 0; j < surf.getWidth(); j++) {
-				setPixel(j+x, i+y, surf.colorAt(j, i));
+				setPixel(j + x, i + y, surf.colorAt(j, i));
 			}
 		}
 	}
@@ -302,10 +309,23 @@ public:
 			for (int j = 0; j < width; j++) {
 				charInfo[i * width + j].Char.UnicodeChar = L'█';
 				charInfo[i * width + j].Attributes = screen[i][j];
-				
+
 			}
 		}
 		WriteConsoleOutputW(hConsole, charInfo, charBufSize, characterPos, &writeArea);
 		delete[] charInfo;
+	}
+
+
+	void getKeysPressed(vector<char>* dest) {
+		dest->clear();
+		for (int i = 0; i < 37; i++) {
+			if (GetKeyState(keys[i]) & 0x8000)
+				dest->push_back(keys[i]);
+		}
+	}
+
+	bool isPressed(char k) {
+		return GetKeyState(k) & 0x8000;
 	}
 };
